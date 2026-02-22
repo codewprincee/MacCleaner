@@ -4,26 +4,46 @@ struct CleanupProgressView: View {
     let progress: Double
     let currentCategory: String
 
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Cleaning in Progress")
-                .font(.title2.weight(.semibold))
+    @State private var rotation: Double = 0
 
-            ProgressView(value: progress) {
-                Text("Cleaning \(currentCategory)...")
+    var body: some View {
+        VStack(spacing: 24) {
+            // Animated icon
+            ZStack {
+                Circle()
+                    .fill(.blue.opacity(0.1))
+                    .frame(width: 72, height: 72)
+
+                Image(systemName: "sparkles")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.blue)
+            }
+
+            VStack(spacing: 6) {
+                Text("Cleaning in Progress")
+                    .font(.title3.weight(.semibold))
+
+                Text(currentCategory)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            .progressViewStyle(.linear)
-            .frame(width: 300)
 
-            Text(String(format: "%.0f%%", progress * 100))
-                .font(.system(.title, design: .monospaced))
-                .foregroundStyle(.blue)
+            // Progress bar
+            VStack(spacing: 8) {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .tint(.blue)
+                    .frame(width: 280)
+
+                Text(String(format: "%.0f%%", progress * 100))
+                    .font(.system(.callout, design: .monospaced, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(40)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(radius: 20)
+        .padding(.horizontal, 48)
+        .padding(.vertical, 36)
+        .background(.ultraThickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .shadow(color: .black.opacity(0.15), radius: 30, y: 10)
     }
 }

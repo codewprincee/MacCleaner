@@ -4,129 +4,146 @@ struct CleanupSummaryView: View {
     let summary: CleanupSummary
     let onDismiss: () -> Void
     @State private var showErrorDetails = false
+    @State private var appeared = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            Image(systemName: headerIcon)
-                .font(.system(size: 48))
-                .foregroundStyle(headerColor)
+        VStack(spacing: 0) {
+            // Header with gradient background
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(headerColor.opacity(0.15))
+                        .frame(width: 72, height: 72)
 
-            Text("Cleanup Complete")
-                .font(.title2.weight(.semibold))
+                    Image(systemName: headerIcon)
+                        .font(.system(size: 36))
+                        .foregroundStyle(headerColor)
+                }
 
-            // Total freed
-            VStack(spacing: 4) {
-                Text(ByteFormatter.format(summary.totalBytesFreed))
-                    .font(.system(.title, design: .monospaced).weight(.bold))
-                    .foregroundStyle(.blue)
-                Text("total space freed")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text("Cleanup Complete")
+                    .font(.title2.weight(.semibold))
+
+                // Total freed
+                VStack(spacing: 2) {
+                    Text(ByteFormatter.format(summary.totalBytesFreed))
+                        .font(.system(.title, design: .rounded).weight(.bold))
+                        .foregroundStyle(headerColor)
+                    Text("space freed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .padding(.top, 28)
+            .padding(.bottom, 20)
 
-            Divider()
+            Divider().padding(.horizontal, 20)
 
             // Per-category results
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 1) {
                     ForEach(summary.results) { result in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: resultIcon(for: result))
-                                    .foregroundStyle(resultColor(for: result))
-                                    .font(.caption)
+                        HStack(spacing: 10) {
+                            Image(systemName: resultIcon(for: result))
+                                .font(.system(size: 14))
+                                .foregroundStyle(resultColor(for: result))
+                                .frame(width: 20)
 
-                                Text(result.type.rawValue)
-                                    .font(.body)
+                            Text(result.type.rawValue)
+                                .font(.system(.callout, weight: .medium))
+                                .lineLimit(1)
 
-                                Spacer()
+                            Spacer()
 
-                                if result.success || result.partialSuccess {
-                                    Text(ByteFormatter.format(result.bytesFreed))
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Text("Failed")
-                                        .font(.caption)
-                                        .foregroundStyle(.red)
-                                }
+                            if result.success || result.partialSuccess {
+                                Text(ByteFormatter.format(result.bytesFreed))
+                                    .font(.system(.callout, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Failed")
+                                    .font(.callout)
+                                    .foregroundStyle(.red)
                             }
 
                             if !result.errors.isEmpty {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                    Text("\(result.errors.count) file(s) could not be removed")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.leading, 20)
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
                     }
                 }
-                .padding(.horizontal)
+                .background {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(.quaternary.opacity(0.3))
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal, 20)
             }
-            .frame(maxHeight: 200)
+            .frame(maxHeight: 220)
+            .padding(.top, 16)
 
-            // Error details button
+            // Error details
             if totalErrors > 0 {
-                Button("View \(totalErrors) Error(s)") {
+                Button {
                     showErrorDetails = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.caption)
+                        Text("\(totalErrors) item(s) had errors")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(.orange)
                 }
-                .font(.caption)
-                .buttonStyle(.link)
+                .buttonStyle(.plain)
+                .padding(.top, 10)
             }
 
-            // Summary stats
-            if summary.failureCount > 0 {
-                HStack {
-                    Label("\(summary.successCount) succeeded", systemImage: "checkmark.circle")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                    Text("/")
-                        .foregroundStyle(.secondary)
-                    Label("\(summary.failureCount) failed", systemImage: "xmark.circle")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                }
-            }
-
-            // Disk usage after
+            // Disk free after
             if let diskAfter = summary.diskAfter {
-                Divider()
-                HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "internaldrive")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Text("Disk free:")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(ByteFormatter.format(diskAfter.freeSpace))
-                        .font(.system(.subheadline, design: .monospaced).weight(.medium))
+                        .font(.system(.subheadline, design: .monospaced, weight: .medium))
                 }
+                .padding(.top, 14)
             }
 
-            Button("Done") {
+            // Done button
+            Button {
                 onDismiss()
+            } label: {
+                Text("Done")
+                    .font(.system(.body, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
             }
-            .keyboardShortcut(.defaultAction)
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
             .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 24)
         }
-        .padding(30)
-        .frame(width: 450)
+        .frame(width: 420)
         .sheet(isPresented: $showErrorDetails) {
             ErrorDetailsView(summary: summary)
         }
+        .onAppear { appeared = true }
     }
 
     private var headerIcon: String {
-        if summary.failureCount == 0 {
-            return "checkmark.circle.fill"
-        } else if summary.successCount > 0 {
-            return "exclamationmark.triangle.fill"
-        } else {
-            return "xmark.circle.fill"
-        }
+        if summary.failureCount == 0 { return "checkmark.circle.fill" }
+        else if summary.successCount > 0 { return "exclamationmark.triangle.fill" }
+        else { return "xmark.circle.fill" }
     }
 
     private var headerColor: Color {
@@ -164,28 +181,40 @@ struct ErrorDetailsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Cleanup Errors")
-                .font(.title2.weight(.semibold))
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text("Cleanup Errors")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+            }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
                     ForEach(errorGroups, id: \.type.id) { item in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(item.type.rawValue)
-                                .font(.headline)
+                                .font(.system(.callout, weight: .semibold))
 
                             ForEach(item.errors) { error in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(error.path)
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                    Text(error.reason)
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "xmark.circle.fill")
                                         .font(.caption)
-                                        .foregroundStyle(.red)
+                                        .foregroundStyle(.red.opacity(0.7))
+                                        .padding(.top, 2)
+
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(error.path)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .foregroundStyle(.primary)
+                                        Text(error.reason)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 .padding(8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.red.opacity(0.08))
+                                .background(Color.red.opacity(0.05))
                                 .clipShape(RoundedRectangle(cornerRadius: 6))
                             }
                         }
@@ -195,13 +224,11 @@ struct ErrorDetailsView: View {
 
             HStack {
                 Spacer()
-                Button("Close") {
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
+                Button("Close") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
             }
         }
         .padding(24)
-        .frame(width: 550, height: 400)
+        .frame(width: 520, height: 400)
     }
 }

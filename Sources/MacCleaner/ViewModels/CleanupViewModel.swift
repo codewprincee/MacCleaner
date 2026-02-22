@@ -13,6 +13,7 @@ final class CleanupViewModel: ObservableObject {
     @Published var cleanupSummary: CleanupSummary?
 
     private let cleanupService = CleanupService()
+    private let notificationService = NotificationService()
 
     var totalSelectedSize: Int64 {
         categories
@@ -30,6 +31,7 @@ final class CleanupViewModel: ObservableObject {
 
     init() {
         categories = CleanupType.allCases.map { CleanupCategory(type: $0) }
+        Task { await notificationService.requestPermission() }
     }
 
     // MARK: - Actions
@@ -67,6 +69,11 @@ final class CleanupViewModel: ObservableObject {
         }
 
         isScanning = false
+
+        // Check for low storage and send notification
+        if let disk = diskUsage {
+            await notificationService.checkAndNotifyLowStorage(disk)
+        }
     }
 
     func cleanSelected() async {

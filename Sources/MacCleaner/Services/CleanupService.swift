@@ -84,10 +84,10 @@ actor CleanupService {
     func estimateSize(for type: CleanupType) async -> Int64 {
         switch type {
         case .userCaches:
-            return await scanner.cleanableDirectorySize(at: Constants.userCachesPath)
+            return await scanner.directorySize(at: Constants.userCachesPath)
 
         case .systemLogs:
-            return await scanner.cleanableDirectorySize(at: Constants.systemLogsPath)
+            return await scanner.directorySize(at: Constants.systemLogsPath)
 
         case .xcodeDerivedData:
             return await scanner.directorySize(at: Constants.xcodeDerivedDataPath)
@@ -145,12 +145,12 @@ actor CleanupService {
 
     func clean(_ type: CleanupType) async -> CleanupResult {
         switch type {
-        // File system categories (user-level, skip system-protected dirs)
+        // File system categories - use admin privileges to clean everything
         case .userCaches:
-            return await cleanDirectory(Constants.userCachesPath, type: type, skipProtected: true)
+            return await cleanDirectoryWithPrivileges(Constants.userCachesPath, type: type)
 
         case .systemLogs:
-            return await cleanDirectory(Constants.systemLogsPath, type: type, skipProtected: true)
+            return await cleanDirectoryWithPrivileges(Constants.systemLogsPath, type: type)
 
         case .xcodeDerivedData:
             return await cleanDirectory(Constants.xcodeDerivedDataPath, type: type)
@@ -170,9 +170,9 @@ actor CleanupService {
         case .chromeCache:
             return await cleanDirectory(Constants.chromeCachePath, type: type)
 
-        // Temp files - try user first, then escalate
+        // Temp files - use admin to clean other users' files too
         case .tempFiles:
-            return await cleanDirectory(Constants.tempPath, type: type)
+            return await cleanDirectoryWithPrivileges(Constants.tempPath, type: type)
 
         // Shell command categories
         case .xcodeSimulators:

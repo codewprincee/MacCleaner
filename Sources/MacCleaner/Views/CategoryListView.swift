@@ -4,13 +4,13 @@ struct CategoryListView: View {
     @ObservedObject var viewModel: CleanupViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            categorySection("File System", categories: fileSystemCategories)
-            categorySection("Xcode", categories: xcodeCategories)
-            categorySection("Browsers", categories: browserCategories)
-            categorySection("Package Managers", categories: packageManagerCategories)
-            categorySection("System (Requires Admin)", categories: systemCategories, isAdmin: true)
-            categorySection("Containers", categories: dockerCategories, showBottomSpacer: false)
+        VStack(alignment: .leading, spacing: 16) {
+            categorySection("File System", icon: "folder.fill", categories: fileSystemCategories)
+            categorySection("Xcode", icon: "hammer.fill", categories: xcodeCategories)
+            categorySection("Browsers", icon: "globe", categories: browserCategories)
+            categorySection("Package Managers", icon: "shippingbox.fill", categories: packageManagerCategories)
+            categorySection("System", icon: "lock.shield.fill", categories: systemCategories, isAdmin: true)
+            categorySection("Containers", icon: "cube.box.fill", categories: dockerCategories)
         }
     }
 
@@ -49,42 +49,64 @@ struct CategoryListView: View {
     }
 
     @ViewBuilder
-    private func categorySection(_ title: String, categories: [CleanupCategory],
-                                 isAdmin: Bool = false, showBottomSpacer: Bool = true) -> some View {
+    private func categorySection(_ title: String, icon: String, categories: [CleanupCategory],
+                                 isAdmin: Bool = false) -> some View {
         if !categories.isEmpty {
-            Section {
-                ForEach(categories) { category in
-                    CategoryRowView(category: category) {
-                        Task { await viewModel.cleanSingle(category) }
+            VStack(alignment: .leading, spacing: 4) {
+                // Section header
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(title)
+                        .font(.system(.subheadline, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    if isAdmin {
+                        Text("ADMIN")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(.orange.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
                     }
-                    if category.id != categories.last?.id {
-                        Divider().padding(.leading, 48)
+
+                    // Section total size
+                    let sectionTotal = categories.reduce(Int64(0)) { $0 + $1.estimatedSize }
+                    if sectionTotal > 0 {
+                        Spacer()
+                        Text(ByteFormatter.format(sectionTotal))
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.tertiary)
                     }
                 }
-            } header: {
-                sectionHeader(title, isAdmin: isAdmin)
-            }
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
 
-            if showBottomSpacer {
-                Spacer().frame(height: 16)
+                // Category rows inside a card
+                VStack(spacing: 0) {
+                    ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
+                        CategoryRowView(category: category) {
+                            Task { await viewModel.cleanSingle(category) }
+                        }
+
+                        if index < categories.count - 1 {
+                            Divider()
+                                .padding(.leading, 58)
+                        }
+                    }
+                }
+                .background {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.background)
+                        .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(.quaternary, lineWidth: 0.5)
+                }
             }
         }
-    }
-
-    private func sectionHeader(_ title: String, isAdmin: Bool = false) -> some View {
-        HStack(spacing: 4) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-
-            if isAdmin {
-                Image(systemName: "lock.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 4)
     }
 }

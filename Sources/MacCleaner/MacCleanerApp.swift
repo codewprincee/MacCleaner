@@ -7,6 +7,7 @@ struct MacCleanerApp: App {
             ContentView()
         }
         .windowStyle(.titleBar)
-        .defaultSize(width: 650, height: 600)
+        .windowToolbarStyle(.unified(showsTitle: true))
+        .defaultSize(width: 720, height: 680)
     }
 }
