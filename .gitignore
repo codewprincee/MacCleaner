@@ -6,3 +6,6 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .swiftpm/xcode/xcuserdata
 *.xcodeproj/
+
+# Release artifacts (uploaded to GitHub Releases, not tracked)
+/dist/
