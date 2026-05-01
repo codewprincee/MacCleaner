@@ -31,12 +31,29 @@ fi
 # Create bundle structure
 mkdir -p "${MACOS_DIR}"
 mkdir -p "${RESOURCES_DIR}"
+FRAMEWORKS_DIR="${CONTENTS_DIR}/Frameworks"
+mkdir -p "${FRAMEWORKS_DIR}"
 
 # Copy binary
 cp "${BINARY_PATH}" "${MACOS_DIR}/${APP_NAME}"
 
 # Copy Info.plist
 cp "${SCRIPT_DIR}/Info.plist" "${CONTENTS_DIR}/Info.plist"
+
+# Copy any frameworks emitted alongside the binary (Sparkle, etc.) so the app
+# can load @rpath/<Framework>.framework from Contents/Frameworks at runtime.
+BIN_DIR=$(swift build -c release --show-bin-path)
+for fw in "${BIN_DIR}"/*.framework; do
+    [ -d "${fw}" ] || continue
+    echo "Embedding $(basename "${fw}")"
+    cp -R "${fw}" "${FRAMEWORKS_DIR}/"
+done
+
+# SwiftPM bakes @loader_path as the only @rpath, which resolves to Contents/MacOS.
+# Add the conventional Cocoa rpath so dyld looks in Contents/Frameworks too.
+# Idempotent: install_name_tool errors if the path already exists, so swallow that.
+install_name_tool -add_rpath "@executable_path/../Frameworks" \
+    "${MACOS_DIR}/${APP_NAME}" 2>/dev/null || true
 
 # Generate a simple app icon (blue circle with broom)
 # We'll create a basic icns from a simple PNG using sips
@@ -116,6 +133,16 @@ if command -v iconutil &>/dev/null; then
         echo "App icon created." || echo "Warning: Could not create icon. App will use default icon."
 fi
 rm -rf "${ICON_DIR}"
+
+# Final ad-hoc resigning — done LAST, after every file in the bundle exists,
+# so the seal covers everything. Without this, dyld rejects the binary on
+# launch ("library not loaded") because modifying the binary's rpath
+# invalidates the original ad-hoc signature.
+echo "=== Signing bundle ==="
+xattr -cr "${BUNDLE_DIR}" 2>/dev/null || true
+codesign --force --deep --sign - "${BUNDLE_DIR}" 2>&1 | tail -3
+codesign --verify --verbose "${BUNDLE_DIR}" 2>&1 | tail -3 || \
+    echo "Warning: codesign verification reported issues — the app may still launch but Gatekeeper might complain on first run."
 
 echo ""
 echo "=== Installation complete! ==="

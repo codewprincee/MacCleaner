@@ -1,0 +1,40 @@
+# SwiftLint configuration for MacCleaner.
+# https://realm.github.io/SwiftLint/rule-directory.html
+
+disabled_rules:
+  - line_length          # Overly noisy; we cap with SwiftFormat instead.
+  - trailing_whitespace  # Owned by SwiftFormat.
+  - force_cast           # Used sparingly and intentionally in a few SwiftUI bridging spots.
+
+opt_in_rules:
+  - closure_end_indentation
+  - explicit_init
+  - first_where
+  - last_where
+  - redundant_nil_coalescing
+  - unused_import
+  - unused_declaration
+
+excluded:
+  - .build
+  - .swiftpm
+  - Tests
+  - DerivedData
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+  ignores_function_declarations: true
+  ignores_interpolated_strings: true
+
+identifier_name:
+  excluded:
+    - id
+    - x
+    - y
+    - to
+    - on
+
+reporter: "xcode"

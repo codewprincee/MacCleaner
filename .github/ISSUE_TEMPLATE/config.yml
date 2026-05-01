@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions & Q&A
+    url: https://github.com/codewprincee/MacCleaner/discussions
+    about: Ask a question, share an idea, or chat with the community.
+  - name: Security advisory
+    url: https://github.com/codewprincee/MacCleaner/security/advisories/new
+    about: Privately report a security vulnerability. Do not file public issues for security bugs.

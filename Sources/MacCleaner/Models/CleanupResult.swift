@@ -1,9 +1,11 @@
 import Foundation
 
-struct FileCleanupError: Identifiable {
+struct FileCleanupError: Identifiable, Error, LocalizedError {
     let id = UUID()
     let path: String
     let reason: String
+
+    var errorDescription: String? { "\(path): \(reason)" }
 }
 
 struct CleanupResult: Identifiable {

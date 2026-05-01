@@ -9,9 +9,9 @@
     <key>CFBundleIdentifier</key>
     <string>com.codewprince.MacCleaner</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>2.0.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>2.0.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
@@ -19,12 +19,23 @@
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>14.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSUIElement</key>
     <false/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <!-- Sparkle 2 auto-update configuration. SUFeedURL and SUPublicEDKey must be set
+         before public release; until then, Sparkle stays dormant and the
+         "Check for Updates…" menu item is disabled. -->
+    <key>SUFeedURL</key>
+    <string>https://maccleaner.app/appcast.xml</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+    <key>SUPublicEDKey</key>
+    <string></string>
 </dict>
 </plist>

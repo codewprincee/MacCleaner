@@ -1,0 +1,18 @@
+# SwiftFormat configuration for MacCleaner.
+# https://github.com/nicklockwood/SwiftFormat
+
+--swiftversion 5.9
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--commas always
+--header strip
+
+--enable isEmpty
+--enable redundantSelf
+--enable redundantReturn
+--enable redundantParens
+--enable sortImports
+
+--exclude .build,.swiftpm,DerivedData

@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Sign, Notarize, Publish
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release (universal arm64 + x86_64)
+        run: |
+          swift build -c release \
+            --arch arm64 --arch x86_64 \
+            -Xswiftc -warnings-as-errors
+
+      - name: Stage app bundle
+        env:
+          APP_NAME: MacCleaner
+        run: |
+          set -euo pipefail
+          BIN_PATH="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/${APP_NAME}"
+          STAGE_DIR="${RUNNER_TEMP}/stage"
+          BUNDLE_DIR="${STAGE_DIR}/${APP_NAME}.app"
+          MACOS_DIR="${BUNDLE_DIR}/Contents/MacOS"
+          RES_DIR="${BUNDLE_DIR}/Contents/Resources"
+          mkdir -p "${MACOS_DIR}" "${RES_DIR}"
+          cp "${BIN_PATH}" "${MACOS_DIR}/${APP_NAME}"
+          cp Info.plist "${BUNDLE_DIR}/Contents/Info.plist"
+          echo "BUNDLE_DIR=${BUNDLE_DIR}" >> "$GITHUB_ENV"
+          echo "STAGE_DIR=${STAGE_DIR}" >> "$GITHUB_ENV"
+
+      # TODO: Code-signing — requires the following GitHub secrets:
+      #   APPLE_DEVELOPER_ID            — "Developer ID Application: Your Name (TEAMID)"
+      #   APPLE_DEVELOPER_ID_PASSWORD   — app-specific password for notarytool
+      #   APPLE_TEAM_ID                 — 10-char Apple Developer team ID
+      #   APPLE_DEVELOPER_CERT_BASE64   — base64-encoded .p12 cert export
+      #   APPLE_DEVELOPER_CERT_PASSWORD — password for the .p12
+      #   SPARKLE_EDDSA_PRIVATE_KEY     — Sparkle EdDSA signing key (base64)
+      # - name: Import Developer ID certificate
+      #   env:
+      #     APPLE_DEVELOPER_CERT_BASE64: ${{ secrets.APPLE_DEVELOPER_CERT_BASE64 }}
+      #     APPLE_DEVELOPER_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERT_PASSWORD }}
+      #   run: |
+      #     KEYCHAIN="$RUNNER_TEMP/build.keychain"
+      #     security create-keychain -p actions "$KEYCHAIN"
+      #     security set-keychain-settings -lut 21600 "$KEYCHAIN"
+      #     security unlock-keychain -p actions "$KEYCHAIN"
+      #     echo "$APPLE_DEVELOPER_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+      #     security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+      #       -P "$APPLE_DEVELOPER_CERT_PASSWORD" -T /usr/bin/codesign
+      #     security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+      #     security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
+
+      # - name: Sign app bundle
+      #   env:
+      #     APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      #   run: |
+      #     codesign --force --deep --options runtime --timestamp \
+      #       --sign "$APPLE_DEVELOPER_ID" "$BUNDLE_DIR"
+      #     codesign --verify --deep --strict --verbose=2 "$BUNDLE_DIR"
+
+      # - name: Notarize
+      #   env:
+      #     APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      #     APPLE_DEVELOPER_ID_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}
+      #     APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      #   run: |
+      #     ZIP="$RUNNER_TEMP/notarize.zip"
+      #     ditto -c -k --keepParent "$BUNDLE_DIR" "$ZIP"
+      #     xcrun notarytool submit "$ZIP" \
+      #       --apple-id "$APPLE_DEVELOPER_ID" \
+      #       --team-id "$APPLE_TEAM_ID" \
+      #       --password "$APPLE_DEVELOPER_ID_PASSWORD" \
+      #       --wait
+      #     xcrun stapler staple "$BUNDLE_DIR"
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+          DMG_PATH="${RUNNER_TEMP}/MacCleaner-${{ steps.version.outputs.version }}.dmg"
+          create-dmg \
+            --volname "MacCleaner ${{ steps.version.outputs.version }}" \
+            --window-pos 200 120 \
+            --window-size 600 360 \
+            --icon-size 100 \
+            --icon "MacCleaner.app" 150 180 \
+            --hide-extension "MacCleaner.app" \
+            --app-drop-link 450 180 \
+            "${DMG_PATH}" \
+            "${STAGE_DIR}" \
+            || true
+          ls -la "${RUNNER_TEMP}"
+          echo "DMG_PATH=${DMG_PATH}" >> "$GITHUB_ENV"
+
+      # TODO: Sparkle appcast generation — requires SPARKLE_EDDSA_PRIVATE_KEY secret
+      # and the Sparkle distribution tools (`generate_appcast`) installed.
+      # - name: Generate Sparkle appcast
+      #   env:
+      #     SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+      #   run: |
+      #     mkdir -p appcast-dist
+      #     cp "$DMG_PATH" appcast-dist/
+      #     # Requires Sparkle's generate_appcast binary; install via Sparkle release
+      #     # ./bin/generate_appcast appcast-dist/ -o appcast.xml
+      #     echo "$SPARKLE_EDDSA_PRIVATE_KEY" > /tmp/eddsa_priv
+      #     # ./bin/sign_update -f /tmp/eddsa_priv "$DMG_PATH" >> appcast.xml
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: MacCleaner ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.DMG_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

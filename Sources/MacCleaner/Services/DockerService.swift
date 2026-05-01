@@ -1,24 +1,30 @@
 import Foundation
 
 actor DockerService {
-    private let shell = ShellCommandRunner()
+    private let shell: ShellCommandRunner
+
+    init(shell: ShellCommandRunner = ShellCommandRunner()) {
+        self.shell = shell
+    }
 
     func isDockerAvailable() async -> Bool {
         await shell.isToolAvailable(Constants.dockerCheckCommand)
     }
 
     func estimateDiskUsage() async -> Int64 {
-        guard let result = try? await shell.run("docker system df --format '{{.Size}}' 2>/dev/null"),
-              result.success else {
+        guard let result = try? await shell.run(
+            "docker system df --format '{{.Size}}' 2>/dev/null",
+            timeout: 15
+        ), result.success else {
             return 0
         }
-
         return parseDockerSizes(result.output)
     }
 
     func prune() async throws -> Int64 {
         let sizeBefore = await estimateDiskUsage()
-        let result = try await shell.run(Constants.dockerPruneCommand)
+        // docker prune can take a while on large systems
+        let result = try await shell.run(Constants.dockerPruneCommand, timeout: 600)
 
         if !result.success {
             throw CleanupError.commandFailed(result.output)
@@ -31,11 +37,9 @@ actor DockerService {
     private func parseDockerSizes(_ output: String) -> Int64 {
         let lines = output.components(separatedBy: "\n")
         var total: Int64 = 0
-
         for line in lines {
             total += parseSizeString(line.trimmingCharacters(in: .whitespaces))
         }
-
         return total
     }
 
@@ -59,7 +63,6 @@ actor DockerService {
                 }
             }
         }
-
         return 0
     }
 }
